@@ -7,6 +7,7 @@ RUN /usr/bin/yes | comfy --workspace /comfyui update all
 RUN uv pip install \
     --python /opt/venv/bin/python \
     -r /comfyui/requirements.txt
+    
 
 RUN grep -Rqs "MiniMaxH3ImageToVideo" /comfyui/comfy /comfyui/nodes.py \
     || { echo "ERROR: MiniMaxH3ImageToVideo is missing after ComfyUI update"; exit 1; }
