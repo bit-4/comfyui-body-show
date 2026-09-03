@@ -2,21 +2,32 @@ FROM runpod/worker-comfyui:5.8.4-base
 
 ARG HF_TOKEN=""
 
-# 更新 ComfyUI 核心及相关组件
-RUN /usr/bin/yes | comfy --workspace /comfyui update all
+# Directly install the official ComfyUI version containing
+# the built-in MiniMaxH3ImageToVideo node.
+RUN BACKOFFS="10 20 30 60 90" && \
+    for i in 1 2 3 4 5; do \
+        if cd /comfyui && \
+           git fetch --force --depth 1 origin tag v0.33.1 && \
+           git checkout --force v0.33.1 && \
+           test -f /comfyui/comfy_extras/nodes_minimax_h3.py && \
+           grep -q "MiniMaxH3ImageToVideo" \
+               /comfyui/comfy_extras/nodes_minimax_h3.py; then \
+            echo "MiniMaxH3ImageToVideo installed successfully"; \
+            break; \
+        fi; \
+        if [ "$i" -eq 5 ]; then \
+            echo "MiniMaxH3ImageToVideo installation failed after 5 attempts" >&2; \
+            exit 1; \
+        fi; \
+        SLEEP=$(echo "$BACKOFFS" | cut -d ' ' -f "$i"); \
+        echo "Installation attempt $i failed; retrying in $SLEEP seconds" >&2; \
+        sleep "$SLEEP"; \
+    done
 
-# 将更新后的依赖安装到 RunPod 实际使用的 Python 环境
+# Install dependencies into the Python environment used by RunPod.
 RUN uv pip install \
     --python /opt/venv/bin/python \
     -r /comfyui/requirements.txt
-
-# MiniMax H3 是 comfy_extras 中的内置节点
-RUN test -f /comfyui/comfy_extras/nodes_minimax_h3.py \
-    && grep -q "MiniMaxH3ImageToVideo" /comfyui/comfy_extras/nodes_minimax_h3.py \
-    || { \
-        echo "ERROR: MiniMaxH3ImageToVideo is missing after ComfyUI update"; \
-        exit 1; \
-    }
 
 # download models into comfyui
 RUN BACKOFFS="10 20 30 60 90" && for i in 1 2 3 4 5; do HF_TOKEN=$HF_TOKEN comfy model download --url 'https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors' --relative-path models/diffusion_models --filename 'minimax_h3_fl2va_pruned_int8_convrot.safetensors' && break; if [ $i -eq 5 ]; then echo "model-download failed after 5 attempts" >&2; exit 1; fi; SLEEP=$(echo $BACKOFFS | cut -d ' ' -f $i) && echo "model-download attempt $i failed; retrying in $SLEEP seconds" >&2; sleep $SLEEP; done
