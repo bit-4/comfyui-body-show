@@ -7,8 +7,8 @@ ARG HF_TOKEN=""
 RUN BACKOFFS="10 20 30 60 90" && \
     for i in 1 2 3 4 5; do \
         if cd /comfyui && \
-           git fetch --force --depth 1 origin tag v0.33.1 && \
-           git checkout --force v0.33.1 && \
+           git fetch --force --depth 1 origin tag v0.34.0 && \
+           git checkout --force v0.34.0 && \
            test -f /comfyui/comfy_extras/nodes_minimax_h3.py && \
            grep -q "MiniMaxH3ImageToVideo" \
                /comfyui/comfy_extras/nodes_minimax_h3.py; then \
